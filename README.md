@@ -62,6 +62,55 @@ user2, _ := nkeys.FromRawSeed(PrefixByteUser, rawSeed)
 
 ```
 
+## Key Rotation with an Overlap Window
+
+A `RotationSet` keeps one active signing key alongside any number of
+verification keys. Every member has activation and revocation times, so
+verification selects the key that was valid **at the message time**, not just
+whatever is current. This lets operators roll a key without rejecting nodes
+that have not refreshed their configuration, while keeping an explicit
+revocation boundary.
+
+```go
+// Reject revoked-key credentials outright, or allow a clock-skew grace window.
+set, err := nkeys.NewRotationSet(
+    nkeys.WithClockSkew(5 * time.Minute),
+    nkeys.WithRevocationPolicy(nkeys.GracePeriodRevoked),
+)
+
+// Generation 1 is the active signing key.
+old, _ := nkeys.CreateOperator()
+set.ActivateGeneration(old, 1, time.Now())
+
+// Add verification-only members for nodes still trusting older keys.
+set.AddVerificationKey(publicKey, time.Now())
+
+// Rotate: generation 2 becomes active; generation 1 stays as a verifier.
+next, _ := nkeys.CreateOperator()
+set.ActivateGeneration(next, 2, time.Now())
+
+// Signing always uses the active private key.
+sig, _ := set.Sign(data)
+
+// Verification picks a member valid at the message time.
+err = set.Verify(messageTime, data, sig)
+
+// Revoke the old key with an explicit boundary.
+set.Revoke(oldPublicKey, time.Now().Add(24*time.Hour))
+
+// Snapshot exposes public keys and timing only, never seed material.
+snapshot := set.Snapshot()
+
+// Wipe zeroizes every held seed on shutdown and closes the set.
+set.Wipe()
+```
+
+The same generation can only be activated once; a concurrent or repeated
+activation fails with `ErrRotationGenerationConflict`, and an older generation
+fails with `ErrRotationGenerationRollback`. Seed validation, the `nkeys:`
+error prefix and small-order/identity public-key rejection all follow the
+existing KeyPair rules, and KeyPair encoding is unchanged.
+
 ## License
 
 Unless otherwise noted, the NATS source files are distributed

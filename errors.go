@@ -41,6 +41,18 @@ const (
 	ErrInvalidNKeyOperation     = nkeysError("nkeys: only curve key can seal/open")
 	ErrCannotOpen               = nkeysError("nkeys: cannot open no private curve key available")
 	ErrCannotSeal               = nkeysError("nkeys: cannot seal no private curve key available")
+
+	// Key rotation set errors. All retain the "nkeys:" error prefix.
+	ErrRotationClosed             = nkeysError("nkeys: rotation set is closed")
+	ErrRotationMemberExists       = nkeysError("nkeys: rotation set already contains this public key")
+	ErrRotationNoActive           = nkeysError("nkeys: rotation set has no active signing key")
+	ErrRotationNoValidMember      = nkeysError("nkeys: no rotation member valid at the message time")
+	ErrRotationGenerationConflict = nkeysError("nkeys: rotation generation already activated")
+	ErrRotationGenerationRollback = nkeysError("nkeys: rotation generation is older than the active generation")
+	ErrRotationInvalidGeneration  = nkeysError("nkeys: rotation generation must be greater than zero")
+	ErrRotationInvalidTimeRange   = nkeysError("nkeys: rotation member activation time must precede revocation time")
+	ErrRotationInvalidSkew        = nkeysError("nkeys: rotation clock skew must not be negative")
+	ErrRotationInvalidPolicy      = nkeysError("nkeys: unknown rotation revocation policy")
 )
 
 type nkeysError string
